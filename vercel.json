@@ -1,0 +1,17 @@
+{
+    "version": 2,
+    "name": "Burhanpur-city-web",
+    "builds": [
+      {
+        "src": "/App.js",
+        "use": "@vercel/react"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/(.*)",
+        "dest": "/"
+      }
+    ]
+  }
+  

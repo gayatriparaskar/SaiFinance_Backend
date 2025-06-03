@@ -21,7 +21,7 @@ const CategorySection = () => {
       setCategories(res.data?.data || []);
     } catch (error) {
       console.error(
-        "Error fetching categories:",
+        "Error fetching categories data:",
         error.response?.data || error.message
       );
     }
