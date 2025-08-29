@@ -1,0 +1,30 @@
+{
+  "name": "sai-finance-backend",
+  "version": "2.0.0",
+  "description": "SaiFinance Backend with Role-Based Authentication System",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon index.js",
+    "start": "NODE_ENV=production node index.js",
+    "test:auth": "node test-role-based-auth.js"
+  },
+  "keywords": ["finance", "authentication", "role-based", "jwt", "mongodb"],
+  "author": "SaiFinance Team",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "bull": "^4.16.5",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ioredis": "^5.4.2",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.3.4"
+  },
+  "devDependencies": {
+    "morgan": "^1.10.0",
+    "nodemon": "^3.1.9",
+    "axios": "^1.6.2"
+  }
+}
