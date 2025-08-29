@@ -12,6 +12,13 @@ const officerSchema = new mongoose.Schema(
     aadhar: { type: String, trim: true },
     dob: { type: String, trim: true },
     is_active: { type: Boolean, default: true },
+    // ✅ Role field for officer
+    role: { 
+      type: String, 
+      enum: ["admin", "manager", "accounter", "officer"], 
+      default: "officer",
+      required: true 
+    },
     created_on: { type: Date, default: Date.now },
 
     // ✅ User collection details

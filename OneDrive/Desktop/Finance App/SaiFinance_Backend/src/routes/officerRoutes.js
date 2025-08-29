@@ -1,7 +1,6 @@
 const { Router } = require("express");
-const OfficerModel = require("../models/officerModel");
 const { authenticate } = require("../middlewares/authenticate");
-const { checkRole } = require("../middlewares/authorization");
+const { authorizeAdmin } = require("../middlewares/authorization");
 const {
   createOfficer,
   getAllOfficers,
@@ -13,18 +12,18 @@ const {
 const officerRouter = Router();
 
 // Create a new officer
-officerRouter.post("/", authenticate, checkRole("admin"), createOfficer);
+officerRouter.post("/", authenticate, authorizeAdmin, createOfficer);
 
 // Get all officers
-officerRouter.get("/", authenticate, checkRole("admin"), getAllOfficers);
+officerRouter.get("/", authenticate, authorizeAdmin, getAllOfficers);
 
-// Get a single officer by ID
-officerRouter.get("/:id", authenticate, checkRole("admin"), getOfficerById);
+// Get officer by ID
+officerRouter.get("/:id", authenticate, authorizeAdmin, getOfficerById);
 
-// Update an officer
-officerRouter.put("/:id", authenticate, checkRole("admin"), updateOfficer);
+// Update officer
+officerRouter.put("/:id", authenticate, authorizeAdmin, updateOfficer);
 
-// Delete an officer
-officerRouter.delete("/:id", authenticate, checkRole("admin"), deleteOfficer);
+// Delete officer
+officerRouter.delete("/:id", authenticate, authorizeAdmin, deleteOfficer);
 
 module.exports = officerRouter;

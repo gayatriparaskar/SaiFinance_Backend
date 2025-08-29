@@ -105,24 +105,39 @@ const register = async (req, res) => {
 // Login user
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, user_name, full_name } = req.body;
 
-    // Validation
-    if (!email || !password) {
+    // Validation - support multiple login methods
+    if (!password) {
       return res.status(400).json(
-        errorResponse(400, "Missing credentials", "Email and password are required")
+        errorResponse(400, "Missing password", "Password is required")
       );
     }
 
-    // Find user by email
-    const user = await UserModel.findOne({ 
-      email: email.toLowerCase(),
-      is_deleted: false 
-    });
+    // Check if we have any identifier (email, user_name, or full_name)
+    if (!email && !user_name && !full_name) {
+      return res.status(400).json(
+        errorResponse(400, "Missing identifier", "Email, user_name, or full_name is required")
+      );
+    }
+
+    // Build query to find user by email, user_name, or full_name
+    let userQuery = { is_deleted: false };
+    
+    if (email) {
+      userQuery.email = email.toLowerCase();
+    } else if (user_name) {
+      userQuery.user_name = user_name;
+    } else if (full_name) {
+      userQuery.full_name = full_name;
+    }
+
+    // Find user
+    const user = await UserModel.findOne(userQuery);
 
     if (!user) {
       return res.status(401).json(
-        errorResponse(401, "Invalid credentials", "Email or password is incorrect")
+        errorResponse(401, "Invalid credentials", "User not found with provided credentials")
       );
     }
 
@@ -137,7 +152,7 @@ const login = async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
       return res.status(401).json(
-        errorResponse(401, "Invalid credentials", "Email or password is incorrect")
+        errorResponse(401, "Invalid credentials", "Password is incorrect")
       );
     }
 
@@ -152,7 +167,7 @@ const login = async (req, res) => {
     const userResponse = {
       id: user._id,
       full_name: user.full_name,
-      email: user.email,
+      email: user.email || user.user_name, // Use user_name as email if email doesn't exist
       phone_number: user.phone_number,
       role: user.role,
       is_active: user.is_active,

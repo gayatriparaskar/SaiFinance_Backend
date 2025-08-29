@@ -1,50 +1,56 @@
 const { Router } = require("express");
+const { authenticate } = require("../middlewares/authenticate");
+const { authorizeAdmin } = require("../middlewares/authorization");
 const {
-  // createDailyCollection,
-  // addPanlty,
   handleDailyCollection,
+  handleDailyCollectionByAdmin,
   getAllDailyCollections,
   getDailyCollectionById,
   updateDailyCollection,
   deleteDailyCollection,
-  handleDailyCollectionByAdmin,
-  
+  getDailyCollectionByDate,
+  getDailyCollectionByOfficer,
+  getDailyCollectionByDateRange,
+  getDailyCollectionStats,
 } = require("../controllers/dailyCollectionControllers");
-
-const { authenticate } = require("../middlewares/authenticate");
-const { checkRole } = require("../middlewares/authorization");
 
 const dailyCollectionRouter = Router();
 
-// dailyCollectionRouter.post("/", authenticate, createDailyCollection);
-// dailyCollectionRouter.post("/",authenticate, addPanlty)
-// dailyCollectionRouter.post("/:id", createDailyCollection);
-
+// Handle daily collection by officer
 dailyCollectionRouter.post("/", authenticate, handleDailyCollection);
-dailyCollectionRouter.post("/byAdmin/:id", authenticate, checkRole("admin"), handleDailyCollectionByAdmin);
 
+// Handle daily collection by admin
+dailyCollectionRouter.post("/byAdmin/:id", authenticate, authorizeAdmin, handleDailyCollectionByAdmin);
+
+// Get all daily collections
 dailyCollectionRouter.get(
   "/",
   authenticate,
-  checkRole("admin"),
+  authorizeAdmin,
   getAllDailyCollections
 );
+
+// Get daily collection by ID
 dailyCollectionRouter.get(
   "/:id",
   authenticate,
-  checkRole("admin"),
+  authorizeAdmin,
   getDailyCollectionById
 );
+
+// Update daily collection
 dailyCollectionRouter.put(
   "/:id",
   authenticate,
-  checkRole("admin"),
+  authorizeAdmin,
   updateDailyCollection
 );
+
+// Delete daily collection
 dailyCollectionRouter.delete(
   "/:id",
   authenticate,
-  checkRole("admin"),
+  authorizeAdmin,
   deleteDailyCollection
 );
 

@@ -3,6 +3,11 @@ const mongoose = require("mongoose");
 const userSchema = new mongoose.Schema(
   {
     full_name: { type: String, required: true },
+    user_name: { 
+      type: String, 
+      trim: true,
+      index: true 
+    },
     email: { 
       type: String, 
       required: true, 
@@ -66,6 +71,7 @@ const userSchema = new mongoose.Schema(
 userSchema.index({
   full_name: "text",
   email: "text",
+  user_name: "text",
 });
 
 const UserModel = mongoose.model("user", userSchema);

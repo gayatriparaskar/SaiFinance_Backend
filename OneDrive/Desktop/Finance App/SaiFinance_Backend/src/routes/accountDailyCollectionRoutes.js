@@ -1,35 +1,41 @@
 const { Router } = require("express");
-
-const { handleSavingDeposit ,handleSavingDepositByAdmin,handleSavingWithdrawalByAdmin,getAccountStats,totalDailyCollectionOfSavingForToday,addMonthlyInterest,getAccountDailyCollectionById,getAllSavingCollections,getTotalSavingCollectionForDate,getTotalSavingCollectionForWeek,getTotalSavingCollectionForMonth,getTotalSavingCollectionForYear,getTotalSavingCollectionForEachMonth,getTotalSavingCollectionForWeekForEachDay} = require("../controllers/accountDailyCollectionControllers");
-
-
 const { authenticate } = require("../middlewares/authenticate");
-const { checkRole } = require("../middlewares/authorization");
+const { authorizeAdmin } = require("../middlewares/authorization");
+const {
+  handleSavingDepositByAdmin,
+  handleSavingWithdrawalByAdmin,
+  totalDailyCollectionOfSavingForToday,
+  getAccountStats,
+  addMonthlyInterest,
+  getAccountDailyCollectionById,
+  getTotalSavingCollectionForDate,
+  getTotalSavingCollectionForWeek,
+  getTotalSavingCollectionForMonth,
+  getTotalSavingCollectionForYear,
+  getTotalSavingCollectionForEachMonth,
+  getTotalSavingCollectionForWeekForEachDay,
+} = require("../controllers/accountDailyCollectionControllers");
 
 const savingDailyCollectionRouter = Router();
 
+savingDailyCollectionRouter.post("/byAdmin/:id", authenticate, authorizeAdmin, handleSavingDepositByAdmin);
+savingDailyCollectionRouter.post("/withdrawByAdmin/:id", authenticate, authorizeAdmin, handleSavingWithdrawalByAdmin);
+savingDailyCollectionRouter.get("/totalSavingCollectionsToday", authenticate, authorizeAdmin, totalDailyCollectionOfSavingForToday);
 
-savingDailyCollectionRouter.post("/", authenticate, handleSavingDeposit);
-savingDailyCollectionRouter.get("/getAllSavings", authenticate, getAllSavingCollections);
-savingDailyCollectionRouter.post("/byAdmin/:id", authenticate, checkRole("admin"), handleSavingDepositByAdmin);
-savingDailyCollectionRouter.post("/withdrawByAdmin/:id", authenticate, checkRole("admin"), handleSavingWithdrawalByAdmin);
-savingDailyCollectionRouter.get("/totalSavingCollectionsToday", authenticate, checkRole("admin"), totalDailyCollectionOfSavingForToday);
+// Get account stats
+savingDailyCollectionRouter.get("/accountStats",authenticate, authorizeAdmin,getAccountStats)
+savingDailyCollectionRouter.get("/totalSavingCollectionsToday", authenticate, authorizeAdmin, totalDailyCollectionOfSavingForToday);
 
+// Add monthly interest
+savingDailyCollectionRouter.put("/monthly-interest",authenticate, authorizeAdmin,addMonthlyInterest );
+savingDailyCollectionRouter.get("/:id",authenticate,authorizeAdmin,getAccountDailyCollectionById);
 
-savingDailyCollectionRouter.get("/accountStats",authenticate, checkRole("admin"),getAccountStats)
-savingDailyCollectionRouter.get("/totalSavingCollectionsToday", authenticate, checkRole("admin"), totalDailyCollectionOfSavingForToday);
-
-savingDailyCollectionRouter.put("/monthly-interest",authenticate, checkRole("admin"),addMonthlyInterest );
-savingDailyCollectionRouter.get("/:id",authenticate,checkRole("admin"),getAccountDailyCollectionById);
-
-savingDailyCollectionRouter.get("/totalByDate", authenticate, checkRole("admin"), getTotalSavingCollectionForDate);
-savingDailyCollectionRouter.get("/totalSavingCollectionsWeekly", authenticate, checkRole("admin"), getTotalSavingCollectionForWeek);
-savingDailyCollectionRouter.get("/totalSavingCollectionsMonthly", authenticate, checkRole("admin"), getTotalSavingCollectionForMonth);
-savingDailyCollectionRouter.get("/totalSavingCollectionsYearly", authenticate, checkRole("admin"), getTotalSavingCollectionForYear);
-savingDailyCollectionRouter.get("/totalSavingCollectionsMonthlyStats", authenticate, checkRole("admin"), getTotalSavingCollectionForEachMonth);
-savingDailyCollectionRouter.get("/totalSavingCollectionsWeeklyStats", authenticate, checkRole("admin"), getTotalSavingCollectionForWeekForEachDay);
-
-
-
+// Get total collections by date
+savingDailyCollectionRouter.get("/totalByDate", authenticate, authorizeAdmin, getTotalSavingCollectionForDate);
+savingDailyCollectionRouter.get("/totalSavingCollectionsWeekly", authenticate, authorizeAdmin, getTotalSavingCollectionForWeek);
+savingDailyCollectionRouter.get("/totalSavingCollectionsMonthly", authenticate, authorizeAdmin, getTotalSavingCollectionForMonth);
+savingDailyCollectionRouter.get("/totalSavingCollectionsYearly", authenticate, authorizeAdmin, getTotalSavingCollectionForYear);
+savingDailyCollectionRouter.get("/totalSavingCollectionsMonthlyStats", authenticate, authorizeAdmin, getTotalSavingCollectionForEachMonth);
+savingDailyCollectionRouter.get("/totalSavingCollectionsWeeklyStats", authenticate, authorizeAdmin, getTotalSavingCollectionForWeekForEachDay);
 
 module.exports = savingDailyCollectionRouter;
