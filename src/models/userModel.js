@@ -29,6 +29,7 @@ const userSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    account_type:{type: String,enum:["loan account","saving account"], default: "loan account"},
     dob: { type: String, required: true },
     address: { type: String, required: true },
     aadhar_no: { type: String, required: true },

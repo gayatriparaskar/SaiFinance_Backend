@@ -29,7 +29,7 @@ module.exports.getAllUsers = async (req, res) => {
     const user = await UserModel.find({
       active_loan_id: { $exists: true, $ne: null }  
     })
-      .populate("active_loan_id")
+      .populate("active_loan_id saving_account_id")
       .sort({ created_on: -1 })
       .lean()
       .select("-password -role -pan_no");
@@ -127,11 +127,11 @@ module.exports.getUserProfile = async (req, res) => {
     // Retrieve user information from the database
     const user = await UserModel.findById(req.userId)
       .select("-password -role")
-      .populate("active_loan_id")
+      .populate("active_loan_id saving_account_id")
       .lean();
 
     if (!user) {
-      return res.status(404).json(errorResponse(404, "User not found"));
+      return res.status(404).json(errorResponse(404, "User not found in user list"));
     }
 
     // Respond with the user profile
@@ -139,6 +139,20 @@ module.exports.getUserProfile = async (req, res) => {
   } catch (error) {
     console.log(error.message);
     // Handle bad request
-    res.status(400).json(errorResponse(400, error.message));
+    res.status(400).json(errorResponse(400,"something went wrong", error.message));
+  }
+};
+
+// Delete an officer
+module.exports.deleteUser = async (req, res) => {
+  try {
+    const user = await UserModel.findByIdAndDelete(req.params.id);
+    if (!user) {
+      return res.status(404).json(errorResponse(404, "Officer not found in the list of officers"));
+    }
+    res.json(successResponse(200, "Officer deleted successfully"));
+  } catch (error) {
+    console.error(error);
+    res.status(500).json(errorResponse(500, error.message));
   }
 };

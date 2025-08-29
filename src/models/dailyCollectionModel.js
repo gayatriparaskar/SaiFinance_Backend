@@ -26,7 +26,15 @@ const DailyCollectionSchema = new mongoose.Schema(
       type: Number,
       
     },
-   
+     penalty_type: {
+      type: String,
+      enum: ["percentage", "amount", null],
+      default: null,
+    },
+    penalty_value: {
+      type: Number,
+      default: 0,
+    },
     collected_officer_name: { type: String, required: true },
     created_on: { type: Date, default: Date.now },
   },

@@ -9,7 +9,7 @@ const savingAccountDailyCollectionSchema = new mongoose.Schema(
       },
       saving_account_id: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "savingaccount",
+        ref: "UserSavingAccount",
         required: true,
       },
       deposit_amount: {

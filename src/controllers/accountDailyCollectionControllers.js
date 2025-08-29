@@ -2,11 +2,12 @@ const {
     errorResponse,
     successResponse,
  } = require("../helpers/successAndError");
-
+const mongoose = require("mongoose"); 
 const SavingDailyCollectionModel = require("../models/accountDailyCollectionModel");
 const OfficerModel = require("../models/officerModel");
 const UserModel = require("../models/userModel");
 const SavingModel = require("../models/savingaccountModel");
+
 
 module.exports.handleSavingDeposit = async (req, res) => {
   try {
@@ -96,7 +97,6 @@ module.exports.handleSavingDeposit = async (req, res) => {
     res.status(500).json(errorResponse(500, error.message));
   }
 };
-
 
 module.exports.handleSavingDepositByAdmin = async (req, res) => {
   try {
@@ -191,6 +191,28 @@ module.exports.handleSavingDepositByAdmin = async (req, res) => {
   }
 };
 
+module.exports.getAllSavingCollections = async (req, res) => {
+    try {
+      const collections = await SavingDailyCollectionModel.find()
+        .populate("saving_account_id", " deposit_amount withdraw_amount")
+        .populate("collected_by", "name")
+        .populate("user_id", "full_name")
+        .sort({ created_on: -1 })
+        .lean();
+  
+      res.json(
+        successResponse(
+          200,
+          "Daily Saving collections fetched successfully",
+          collections
+        )
+      );
+    } catch (error) {
+      console.error(error);
+      res.status(500).json(errorResponse(500, error.message));
+    }
+  };
+  
 module.exports.handleSavingWithdrawalByAdmin = async (req, res) => {
     try {
       const { withdraw_amount, collected_officer_id, collected_officer_code } = req.body;
@@ -230,13 +252,17 @@ module.exports.handleSavingWithdrawalByAdmin = async (req, res) => {
       }
   
   
-      if (withdraw_amount > savingAccount.current_amount) {
+          // 👉 3% deduction calculation
+    const deductedAmount = (withdraw_amount * 3) / 100;
+    const totalDeduction = withdraw_amount + deductedAmount;
+
+      if (totalDeduction > savingAccount.current_amount) {
         return res.status(400).json(errorResponse(400, "Insufficient balance"));
       }
   
-      if (withdraw_amount > savingAccount.daily_withdrawal_limit) {
-        return res.status(400).json(errorResponse(400, "Exceeds daily withdrawal limit"));
-      }
+      // if (withdraw_amount > savingAccount.daily_withdrawal_limit) {
+      //   return res.status(400).json(errorResponse(400, "Exceeds daily withdrawal limit"));
+      // }
 
       if (collectingOfficer.name !== "Admin Officer") {
         return res.status(403).json(errorResponse(403, "Invalid Admin officer code"));
@@ -247,7 +273,7 @@ module.exports.handleSavingWithdrawalByAdmin = async (req, res) => {
         savingAccount._id,
         {
           $inc: {
-            current_amount: -withdraw_amount,
+            current_amount: -totalDeduction,
             total_withdrawal: withdraw_amount,
           },
         },
@@ -259,6 +285,7 @@ module.exports.handleSavingWithdrawalByAdmin = async (req, res) => {
         user_id: user._id,
         saving_account_id: savingAccount._id,
         withdraw_amount,
+        total_deduction: totalDeduction, // cut from saving
         collected_by: collectingOfficer._id,
         collected_officer_name: collectingOfficer.name,
 
@@ -272,7 +299,6 @@ module.exports.handleSavingWithdrawalByAdmin = async (req, res) => {
       res.status(500).json(errorResponse(500, error.message));
     }
   };
-  
 
 module.exports.getAccountStats = async (req, res) => {
   try {
@@ -414,6 +440,135 @@ module.exports.getAccountDailyCollectionById = async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json(errorResponse(500, error.message));
+  }
+};
+
+// ✅ 1. Get total collection for a specific date
+module.exports.getTotalSavingCollectionForDate = async (req, res) => {
+  try {
+    const { date } = req.query; // format: YYYY-MM-DD
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    const result = await SavingDailyCollectionModel.aggregate([
+      { $match: { created_on: { $gte: start, $lte: end } } },
+      { $group: { _id: null, totalDeposit: { $sum: "$deposit_amount" } } }
+    ]);
+
+    res.json({ total: result[0]?.totalDeposit || 0 });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ 2. Get total collection for current week
+module.exports.getTotalSavingCollectionForWeek = async (req, res) => {
+  try {
+    const today = new Date();
+    const firstDay = new Date(today.setDate(today.getDate() - today.getDay())); // Sunday
+    firstDay.setHours(0, 0, 0, 0);
+    const lastDay = new Date(firstDay);
+    lastDay.setDate(firstDay.getDate() + 6);
+    lastDay.setHours(23, 59, 59, 999);
+
+    const result = await SavingDailyCollectionModel.aggregate([
+      { $match: { created_on: { $gte: firstDay, $lte: lastDay } } },
+      { $group: { _id: null, totalDeposit: { $sum: "$deposit_amount" } } }
+    ]);
+
+    res.json({ total: result[0]?.totalDeposit || 0 });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ 3. Get total collection for current month
+module.exports.getTotalSavingCollectionForMonth = async (req, res) => {
+  try {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    end.setHours(23, 59, 59, 999);
+
+    const result = await SavingDailyCollectionModel.aggregate([
+      { $match: { created_on: { $gte: start, $lte: end } } },
+      { $group: { _id: null, totalDeposit: { $sum: "$deposit_amount" } } }
+    ]);
+
+    res.json({ total: result[0]?.totalDeposit || 0 });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ 4. Get total collection for current year
+module.exports.getTotalSavingCollectionForYear = async (req, res) => {
+  try {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 1);
+    const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+    const result = await SavingDailyCollectionModel.aggregate([
+      { $match: { created_on: { $gte: start, $lte: end } } },
+      { $group: { _id: null, totalDeposit: { $sum: "$deposit_amount" } } }
+    ]);
+
+    res.json({ total: result[0]?.totalDeposit || 0 });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ 5. Get total collection for each month of current year
+module.exports.getTotalSavingCollectionForEachMonth = async (req, res) => {
+  try {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), 0, 1);
+    const end = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+
+    const result = await SavingDailyCollectionModel.aggregate([
+      { $match: { created_on: { $gte: start, $lte: end } } },
+      {
+        $group: {
+          _id: { month: { $month: "$created_on" } },
+          totalDeposit: { $sum: "$deposit_amount" }
+        }
+      },
+      { $sort: { "_id.month": 1 } }
+    ]);
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// ✅ 6. Get total collection for each day of current week
+module.exports.getTotalSavingCollectionForWeekForEachDay = async (req, res) => {
+  try {
+    const today = new Date();
+    const firstDay = new Date(today.setDate(today.getDate() - today.getDay())); // Sunday
+    firstDay.setHours(0, 0, 0, 0);
+    const lastDay = new Date(firstDay);
+    lastDay.setDate(firstDay.getDate() + 6);
+    lastDay.setHours(23, 59, 59, 999);
+
+    const result = await SavingDailyCollectionModel.aggregate([
+      { $match: { created_on: { $gte: firstDay, $lte: lastDay } } },
+      {
+        $group: {
+          _id: { day: { $dayOfWeek: "$created_on" } },
+          totalDeposit: { $sum: "$deposit_amount" }
+        }
+      },
+      { $sort: { "_id.day": 1 } }
+    ]);
+
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 

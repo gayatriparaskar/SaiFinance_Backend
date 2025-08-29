@@ -9,6 +9,7 @@ const SavingModel = require("../models/savingaccountModel");
 const UserModel = require("../models/userModel");
 const DailyCollectionModel = require("../models/dailyCollectionModel");
 const SavingDailyCollectionModel = require("../models/accountDailyCollectionModel");
+const OfficerModel = require("../models/officerModel");
 module.exports.getLoanStats = async (req, res) => {
   try {
     const totalUsers = await LoanDetailModel.distinct("user_id").then(
@@ -208,42 +209,56 @@ module.exports.getTotalCollectionForToday = async (req, res) => {
     const endOfDay = new Date();
     endOfDay.setHours(23, 59, 59, 999);
 
-    const totalCount = await DailyCollectionModel.countDocuments({
+    // Loan Collection
+    const totalLoanCount = await DailyCollectionModel.countDocuments({
       created_on: { $gte: today, $lte: endOfDay },
     });
 
-    const totalAmount = await DailyCollectionModel.aggregate([
-      {
-        $match: {
-          created_on: { $gte: today, $lte: endOfDay },
-        },
-      },
-      {
-        $group: {
-          _id: null,
-          totalCollection: { $sum: "$amount" },
-        },
-      },
-    ]).then((result) => (result.length > 0 ? result[0].totalCollection : 0));
+    const totalLoanAmount = await DailyCollectionModel.aggregate([
+      { $match: { created_on: { $gte: today, $lte: endOfDay } } },
+      { $group: { _id: null, total: { $sum: "$amount" } } },
+    ]).then((result) => (result.length > 0 ? result[0].total : 0));
+
+    // Saving Collection (Deposit)
+    const totalSavingCount = await SavingDailyCollectionModel.countDocuments({
+      created_on: { $gte: today, $lte: endOfDay },
+    });
+
+    const totalSavingDeposit = await SavingDailyCollectionModel.aggregate([
+      { $match: { created_on: { $gte: today, $lte: endOfDay } } },
+      { $group: { _id: null, total: { $sum: "$deposit_amount" } } },
+    ]).then((result) => (result.length > 0 ? result[0].total : 0));
+
+    // Saving Collection (Withdraw) -> optional
+    const totalSavingWithdraw = await SavingDailyCollectionModel.aggregate([
+      { $match: { created_on: { $gte: today, $lte: endOfDay } } },
+      { $group: { _id: null, total: { $sum: "$withdraw_amount" } } },
+    ]).then((result) => (result.length > 0 ? result[0].total : 0));
 
     const stats = {
       date: today.toDateString(),
-      totalCount,
-      totalAmount,
+      loan: {
+        count: totalLoanCount,
+        amount: totalLoanAmount,
+      },
+      saving: {
+        count: totalSavingCount,
+        deposit: totalSavingDeposit,
+        withdraw: totalSavingWithdraw,
+        net: totalSavingDeposit - totalSavingWithdraw,
+      },
+      grandTotal: totalLoanAmount + totalSavingDeposit - totalSavingWithdraw,
     };
 
     res.json(
-      successResponse(
-        200,
-        `Total daily collection for today retrieved successfully`,
-        stats
-      )
+      successResponse(200, "Total daily collection (Loan + Saving) retrieved successfully", stats)
     );
   } catch (error) {
     console.error(error);
     res.status(500).json(errorResponse(500, error.message));
   }
 };
+
 
 module.exports.getTotalCollectionForWeek = async (req, res) => {
   try {
@@ -707,3 +722,85 @@ module.exports.getTotalCollectionForWeekForEachDay = async (req, res) => {
     res.status(500).json(errorResponse(500, error.message));
   }
 };
+
+
+module.exports.getTodayOfficerSummary = async (req, res) => {
+  try {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+
+
+    const allOfficers = await OfficerModel.find().lean();
+
+    const loanData = await DailyCollectionModel.aggregate([
+      {
+        $match: {
+          created_on: { $gte: start, $lt: end }
+        }
+      },
+      {
+        $group: {
+          _id: "$collected_by",
+          total_loan_amount: { $sum: "$amount" },
+          total_penalty: { $sum: { $ifNull: ["$total_penalty_amount", 0] } }
+        }
+      }
+    ]);
+
+    const savingData = await SavingDailyCollectionModel.aggregate([
+      {
+        $match: {
+          created_on: { $gte: start, $lt: end }
+        }
+      },
+      {
+        $group: {
+          _id: "$collected_by",
+          total_saving_deposit: { $sum: "$deposit_amount" }
+        }
+      }
+    ]);
+
+    const loanMap = new Map();
+    loanData.forEach(item => {
+      loanMap.set(item._id.toString(), item);
+    });
+
+    const savingMap = new Map();
+    savingData.forEach(item => {
+      savingMap.set(item._id.toString(), item);
+    });
+
+    const finalData = allOfficers.map(officer => {
+      const idStr = officer._id.toString();
+      const loan = loanMap.get(idStr) || {};
+      const saving = savingMap.get(idStr) || {};
+
+      const total_loan_amount = loan.total_loan_amount || 0;
+      const total_penalty = loan.total_penalty || 0;
+      const total_saving_deposit = saving.total_saving_deposit || 0;
+
+      return {
+        officer_id: officer._id,
+        officer_name: officer.name,
+        officer_code: officer.officer_code,
+        total_loan_amount,
+        total_penalty,
+        total_saving_deposit,
+        total_collection: total_loan_amount + total_penalty + total_saving_deposit,
+      };
+    });
+
+    res.status(200).json({
+      message: "Today's summary fetched successfully",
+      date: start.toISOString().split("T")[0],
+      data: finalData,
+    });
+  } catch (error) {
+    console.error("Error in getTodayOfficerSummary:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+

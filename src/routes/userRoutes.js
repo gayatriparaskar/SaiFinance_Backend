@@ -6,6 +6,7 @@ const {
   updateUser,
   updateUserById,
   getUserProfile,
+  deleteUser
 } = require("../controllers/userControllers");
 const { authenticate } = require("../middlewares/authenticate");
 const { checkRole } = require("../middlewares/authorization");
@@ -16,6 +17,7 @@ userRouter.get("/profile", authenticate, getUserProfile);
 userRouter.get("/", authenticate, checkRole("admin"), getAllUsers);
 userRouter.get("/:id", authenticate, checkRole("admin"), getUserDetails);
 userRouter.put("/:id", authenticate, checkRole("admin"), updateUserById);
+userRouter.delete("/:id", authenticate, checkRole("admin"), deleteUser);
 
 // userRouter.put("/", authenticate, updateUser);
 
