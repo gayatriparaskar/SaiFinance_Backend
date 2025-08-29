@@ -17,6 +17,7 @@ async function createAdminUser() {
       console.log('Admin user already exists!');
       console.log('Email: admin@test.com');
       console.log('Password: admin123');
+      console.log('Role: admin');
       return;
     }
 
